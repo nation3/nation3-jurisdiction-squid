@@ -1,7 +1,110 @@
-type Burn @entity {
+# Squid Schema: Nation3 Arbitrator
+# Version: 0.1.0
+
+enum AgreementStatus {
+	Created
+	Ongoing
+	Finalized
+	Disputed
+}
+
+enum PositionStatus {
+	Joined
+	Finalized
+	Withdrawn
+	Disputed
+}
+
+type AgremeentInfo @entity {
   id: ID!
-  block: Int!
-  address: String! @index
-  value: BigInt!
-  txHash: String!
+  agreement: Agreement!
+  agreementPosition: AgreementPosition!
+  dispute: Dispute
+}
+
+type Agreement @entity {
+	"Agreement ID"
+	id: ID!
+
+	"Hash of the detailed terms of the agreement"
+	termsHash: Bytes!
+
+	"Required amount to join or merkle root of (address,amount)"
+	criteria: BigInt!
+
+  "Agreement table join"
+  agreements: [AgremeentInfo!]! @derivedFrom(field: "agreement")
+
+	"Agreement Metadata URI"
+	metadataURI: String!
+
+	"Agreement token address"
+	token: Bytes!
+
+	"Status of the agreement"
+	status: AgreementStatus!
+
+	"Time of the agreement creation"
+	createdAt: BigInt!
+}
+
+type AgreementPosition @entity {
+	"Position ID"
+	id: ID!
+
+	"Holder of the position - address"
+	party: Bytes!
+
+	"Amount of tokens corresponding to this position"
+	balance: BigInt!
+
+	"Status of the agreement position"
+	status: PositionStatus!
+
+  "Positions of the agreement"
+  positions: [AgremeentInfo!]! @derivedFrom(field: "agreementPosition")
+}
+
+enum ResolutionStatus {
+	Submitted
+	Appealed
+	Endorsed
+	Executed
+}
+
+type Dispute @entity {
+	"Dispute id"
+	id: ID!
+
+	"Agreement in dispute"
+	agreement: Agreement
+
+	"Time of the dispute creation"
+	createdAt: BigInt!
+
+	"Resolution Id"
+	resolution: Bytes
+
+	"Last submitted settlement"
+	settlement: Settlement
+
+	"All settlements linked to a dispute"
+	settlements: [Settlement!] @derivedFrom(field: "dispute")
+
+  "All disputes linked to an agreement"
+  disputes: [AgremeentInfo] @derivedFrom(field: "dispute")
+}
+
+type Settlement @entity {
+	"Settlement ID"
+	id: ID!
+
+	"Disputed ID"
+	dispute: Dispute!
+
+	"Time of the submission"
+	submittedAt: BigInt!
+
+	"Resolution Status"
+	status: ResolutionStatus!
 }
