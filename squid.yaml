@@ -1,7 +1,7 @@
 manifestVersion: subsquid.io/v0.1
 name: nation3-arbitrator-squid
 version: 1
-description: 'The very first evm squid from manifest  '
+description: 'Nation3 Arbitrator squid.'
 build: 
 deploy:
   addons:
