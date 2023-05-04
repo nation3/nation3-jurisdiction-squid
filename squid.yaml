@@ -1,7 +1,7 @@
 manifestVersion: subsquid.io/v0.1
-name: nation3-arbitrator-squid
+name: nation3-jurisdiction-squid
 version: 1
-description: 'Nation3 Arbitrator squid.'
+description: 'Nation3 Jurisdiction squid.'
 build: 
 deploy:
   addons:

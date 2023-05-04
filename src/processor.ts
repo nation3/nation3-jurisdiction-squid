@@ -1,54 +1,68 @@
-import { TypeormDatabase } from '@subsquid/typeorm-store';
-import {EvmBatchProcessor} from '@subsquid/evm-processor'
-import { lookupArchive } from '@subsquid/archive-registry'
-import assert from 'assert';
+import { Store, TypeormDatabase } from '@subsquid/typeorm-store';
+import { EvmBatchProcessor, LogHandlerContext } from '@subsquid/evm-processor'
 import { PositionStatus, AgreementStatus, Dispute, Settlement, AgremeentInfo, AgreementPosition, Agreement, ResolutionStatus } from './model';
+import { events } from './abi/agreement-framework';
+
+const agreementFrameworkContractAddress = "0x2E41383506A6715da7dd0985dC401fe720e473c0".toLowerCase();
 
 const processor = new EvmBatchProcessor()
   .setDataSource({
-    // uncomment and set RPC_ENDPOONT to enable contract state queries. 
-    // Both https and wss endpoints are supported. 
-    // chain: process.env.RPC_ENDPOINT,
-
-    // Change the Archive endpoints for run the squid 
-    // against the other EVM networks
-    // For a full list of supported networks and config options
-    // see https://docs.subsquid.io/develop-a-squid/evm-processor/configuration/
-
-    archive: lookupArchive('eth-mainnet'),
+    chain: process.env.RPC_ENDPOINT,
+    archive: "https://eth.archive.subsquid.io",
   })
-  .addTransaction([
-    '0x0000000000000000000000000000000000000000'
-  ], {
-    range: {
-      from: 6_000_000
-    },
+  .setBlockRange({ from: 16586489 })
+  .addLog(agreementFrameworkContractAddress, {
+    filter: [
+      [
+        events.AgreementCreated.topic,
+        events.AgreementJoined.topic,
+        events.AgreementPositionUpdated.topic,
+        events.AgreementFinalized.topic,
+        events.AgreementDisputed.topic,
+      ],
+    ],
     data: {
+      evmLog: {
+        topics: true,
+        data: true,
+      },
       transaction: {
-        from: true,
-        value: true,
-        hash: true
+        hash: true,
       }
     }
   });
 
-function formatID(height:any, hash:string) {
-  return `${String(height).padStart(10, '0')}-${hash}` 
-} 
+type AgreementData = {
+  id: string;
+  termsHash: string;
+  metadataURI: string;
+}
 
 processor.run(new TypeormDatabase(), async (ctx) => {
-  const agreements: Agreement[] = []
+  const agreementDataArr: AgreementData[] = [];
   for (let c of ctx.blocks) {
     for (let i of c.items) {
-      assert(i.kind == 'transaction')
-      // decode and normalize the tx data
-      agreements.push(new Agreement({
-        id: formatID(c.header.height, i.transaction.hash)
-      }))
+      if (i.address === agreementFrameworkContractAddress && i.kind === "evmLog") {
+        if (i.evmLog.topics[0] === events.AgreementCreated.topic) {
+          // what to do with the item now?!
+        }
+      }
     }
-   }
+  }
 
-   // upsert batches of entities with batch-optimized ctx.store.save
-   await ctx.store.save(agreements)
+  // upsert batches of entities with batch-optimized ctx.store.save
+  await ctx.store.save(agreementDataArr)
 });
 
+function handleAgreementCreated(ctx: LogHandlerContext<Store, { evmLog: { topics: true; data: true }; transaction: { hash: true } }
+>): AgreementData {
+  const { evmLog, block, transaction } = ctx;
+
+  const agreementData: AgreementData = {
+    id: `${transaction.hash}-${evmLog.address}-${evmLog.index
+      }`,
+    termsHash: transaction.hash,
+    metadataURI: "",
+  }
+  return agreementData;
+}

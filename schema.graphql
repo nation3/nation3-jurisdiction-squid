@@ -1,4 +1,4 @@
-# Squid Schema: Nation3 Arbitrator
+# Squid Schema: Nation3 Jurisdiction
 # Version: 0.1.0
 
 enum AgreementStatus {
